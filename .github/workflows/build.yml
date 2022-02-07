@@ -15,6 +15,9 @@ jobs:
     - name: Checkout the code
       uses: actions/checkout@v2
 
+    - name: Setup credentials
+      run: echo "ext.credentialsKey = \"${{ secrets.BINGMAP_NATIVE_SDK_KEY }}\"" > Android/app/secrets.gradle
+
     - name: Build the app
       run: cd Android && ./gradlew build
 
