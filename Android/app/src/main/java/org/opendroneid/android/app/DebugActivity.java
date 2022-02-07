@@ -17,6 +17,8 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.location.Location;
+import android.location.LocationManager;
+import android.location.LocationListener;
 import android.net.wifi.WifiManager;
 import android.os.Build;
 import android.os.Bundle;
@@ -37,12 +39,6 @@ import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.widget.Toast;
 
-import com.google.android.gms.location.FusedLocationProviderClient;
-import com.google.android.gms.location.LocationCallback;
-import com.google.android.gms.location.LocationRequest;
-import com.google.android.gms.location.LocationResult;
-import com.google.android.gms.location.LocationServices;
-
 import org.opendroneid.android.Constants;
 import org.opendroneid.android.PermissionUtils;
 import org.opendroneid.android.R;
@@ -61,16 +57,13 @@ import java.util.Locale;
 import java.util.Set;
 
 public class DebugActivity extends AppCompatActivity {
+    LocationManager locationManager;
     BluetoothScanner btScanner;
     WiFiNaNScanner wiFiNaNScanner;
     WiFiBeaconScanner wiFiBeaconScanner;
 
     private AircraftViewModel mModel;
     OpenDroneIdDataManager dataManager;
-
-    public LocationRequest locationRequest;
-    public LocationCallback locationCallback;
-    public FusedLocationProviderClient mFusedLocationClient;
 
     private static final String TAG = DebugActivity.class.getSimpleName();
 
@@ -83,6 +76,26 @@ public class DebugActivity extends AppCompatActivity {
 
     private Handler handler;
     private Runnable runnableCode;
+
+    private Location lastKnownGpsLocation;
+    private Location lastKnownNetworkLocation;
+
+    LocationListener gpsLocationListener;
+    LocationListener networkLocationListener;
+
+    private void updateLocation() {
+        if (lastKnownGpsLocation != null && lastKnownNetworkLocation != null) {
+            if (lastKnownGpsLocation.getAccuracy() > lastKnownNetworkLocation.getAccuracy()) {
+                dataManager.receiverLocation = lastKnownGpsLocation;
+            } else {
+                dataManager.receiverLocation = lastKnownNetworkLocation;
+            }
+        } else if (lastKnownGpsLocation != null) {
+            dataManager.receiverLocation = lastKnownGpsLocation;
+        } else if (lastKnownNetworkLocation != null) {
+            dataManager.receiverLocation = lastKnownNetworkLocation;
+        }
+    }
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
@@ -251,22 +264,25 @@ public class DebugActivity extends AppCompatActivity {
             finish();
         }
 
-        mFusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
-        locationRequest = LocationRequest.create();
-        locationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
-        locationRequest.setInterval(10 * 1000); // 10 seconds
-        locationRequest.setFastestInterval(5 * 1000); // 5 seconds
-
-        locationCallback = new LocationCallback() {
-            @Override
-            public void onLocationResult(@NonNull LocationResult locationResult) {
-                for (Location location : locationResult.getLocations()) {
-                    if (location != null) {
-                        dataManager.receiverLocation = location;
-                    }
+        locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+        if (locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
+            gpsLocationListener = new LocationListener() {
+                @Override
+                public void onLocationChanged(@NonNull Location location) {
+                    lastKnownGpsLocation = location;
+                    updateLocation();
                 }
-            }
-        };
+            };
+        }
+        if (locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)) {
+            networkLocationListener = new LocationListener() {
+                @Override
+                public void onLocationChanged(@NonNull Location location) {
+                    lastKnownNetworkLocation = location;
+                    updateLocation();
+                }
+            };
+        }
     }
 
     private void initialize() {
@@ -341,8 +357,12 @@ public class DebugActivity extends AppCompatActivity {
         handler.post(runnableCode);
 
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED &&
-                ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED)
-            mFusedLocationClient.requestLocationUpdates(locationRequest, locationCallback, Looper.getMainLooper());
+                ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+            if (gpsLocationListener != null)
+                locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 5000, 0, gpsLocationListener);
+            if (gpsLocationListener != null)
+                locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 5000, 0, networkLocationListener);
+        }
 
         btScanner.startScan();
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && wiFiNaNScanner != null)
@@ -365,8 +385,12 @@ public class DebugActivity extends AppCompatActivity {
             wiFiBeaconScanner.stopScan();
 
         handler.removeCallbacks(runnableCode);
-        if (mFusedLocationClient != null)
-            mFusedLocationClient.removeLocationUpdates(locationCallback);
+
+        if (gpsLocationListener != null)
+            locationManager.removeUpdates(gpsLocationListener);
+        if (networkLocationListener != null)
+            locationManager.removeUpdates(networkLocationListener);
+
         super.onPause();
     }
 
