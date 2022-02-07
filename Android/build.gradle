@@ -24,6 +24,9 @@ allprojects {
     repositories {
         google()
         mavenCentral()
+        maven {
+            url "https://microsoftmaps.jfrog.io/artifactory/Maven/"
+        }
     }
     gradle.projectsEvaluated {
         tasks.withType(JavaCompile) {
