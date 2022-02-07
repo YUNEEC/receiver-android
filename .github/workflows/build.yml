@@ -1,0 +1,27 @@
+name: OpenDroneID
+
+on:
+  push:
+    branches:
+      - develop
+    tags:
+      - v[0-9]+.[0-9]+.0
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout the code
+    - uses: actions/checkout@v2
+
+    - name: Build the app
+      run: cd Android && ./gradlew build
+
+    # Deploy
+    # NOTE: Disabling since it uses too much space and we store to s3 anyway
+#     - uses: actions/upload-artifact@v2
+#       with:
+#         name: datapilot-${{ matrix.architecture }}-${{ matrix.build_type }}-${{ matrix.flavour }}
+#         path: |
+#           ./build/release/package/*.apk
