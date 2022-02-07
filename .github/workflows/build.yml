@@ -19,11 +19,11 @@ jobs:
       run: echo "ext.credentialsKey = \"${{ secrets.BINGMAP_NATIVE_SDK_KEY }}\"" > Android/app/secrets.gradle
 
     - name: Build the app
-      run: cd Android && ./gradlew build
+      run: cd Android && ./gradlew assembleDebug
 
-    - name: Upload APK
+    - name: Upload Debug APK
       if: success() && ${{ github.event_name }} != 'pull_request'
       uses: actions/upload-artifact@v2
       with:
-        name: opendroneid.apk
-        path: Android/app/build/release/*.apk
+        name: OpenDroneID.apk
+        path: Android/app/build/outputs/apk/app-debug.apk
