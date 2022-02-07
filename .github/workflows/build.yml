@@ -21,10 +21,9 @@ jobs:
     - name: Build the app
       run: cd Android && ./gradlew build
 
-    # Deploy
-    # NOTE: Disabling since it uses too much space and we store to s3 anyway
-#     - uses: actions/upload-artifact@v2
-#       with:
-#         name: datapilot-${{ matrix.architecture }}-${{ matrix.build_type }}-${{ matrix.flavour }}
-#         path: |
-#           ./build/release/package/*.apk
+    - name: Upload APK
+      if: success() && ${{ github.event_name }} != 'pull_request'
+      uses: actions/upload-artifact@v2
+      with:
+        name: opendroneid.apk
+        path: Android/app/build/release/*.apk
