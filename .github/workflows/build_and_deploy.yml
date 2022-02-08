@@ -1,7 +1,7 @@
 name: Build and Deploy OpenDroneID APK
 
 on:
-  releases:
+  release:
     types: [created]
 
 jobs:
