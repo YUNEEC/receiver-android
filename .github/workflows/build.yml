@@ -25,5 +25,5 @@ jobs:
       if: success() && ${{ github.event_name }} != 'pull_request'
       uses: actions/upload-artifact@v2
       with:
-        name: OpenDroneID.apk
-        path: Android/app/build/outputs/apk/app-debug.apk
+        name: opendroneid.apk
+        path: Android/app/build/outputs/apk/debug/app-debug.apk
